@@ -786,10 +786,15 @@ if page == "Overview":
                 backend_summary.get("priority_counts", {}).get("HIGH", 0),
                 "Human review required"
             )
-    else:
-        st.warning(
-            "Backend API is unavailable. Start the backend server to view investigation data."
-        )
+   
+else:
+    st.warning(
+        "Backend API is unavailable. Check the Render backend URL."
+    )
+
+    if backend_summary_error:
+        st.caption(f"Connection details: {backend_summary_error}")
+
 
     st.markdown("<br>", unsafe_allow_html=True)
     st.markdown("## Reading Details")
@@ -1023,13 +1028,14 @@ elif page == "ERP Reconciliation":
             """,
             unsafe_allow_html=True
         )
-    else:
-        
-         st.error(
-    "Could not load investigation cases. "
-    f"Check that the FastAPI backend is running at {BACKEND_URL}."
-)
+    
+else:
+    st.error(
+        "Could not load investigation cases from the Render backend."
+    )
 
+    if backend_cases_error:
+        st.caption(f"Connection details: {backend_cases_error}")
 
     case_df = pd.DataFrame(backend_cases)
 
