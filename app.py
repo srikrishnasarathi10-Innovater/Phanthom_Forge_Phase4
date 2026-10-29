@@ -1,4 +1,5 @@
-
+import os
+import requests
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -499,6 +500,10 @@ import os
 import requests
 
 BACKEND_URL = os.getenv(
+    BACKEND_URL = os.getenv(
+    "BACKEND_URL",
+    "https://phanthom-forge-phase4.onrender.com"
+).rstrip("/")
     "BACKEND_URL",
     requests.get(f"{BACKEND_URL}/cases")
 ).rstrip("/")
