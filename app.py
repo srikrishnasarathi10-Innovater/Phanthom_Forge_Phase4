@@ -504,9 +504,7 @@ BACKEND_URL = os.getenv(
     "BACKEND_URL",
     "https://phanthom-forge-phase4.onrender.com"
 ).rstrip("/")
-    "BACKEND_URL",
-    requests.get(f"{BACKEND_URL}/cases")
-).rstrip("/")
+    "")
 try:
     response = requests.get(f"{BACKEND_URL}/summary", timeout=3)
     response.raise_for_status()
