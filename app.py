@@ -495,38 +495,59 @@ def create_demo_data():
 
 
 df = create_demo_data()
+
+# =========================================================
 # BACKEND API CONNECTION
-import os
-import requests
+# =========================================================
 
 BACKEND_URL = os.getenv(
-    BACKEND_URL = os.getenv(
     "BACKEND_URL",
     "https://phanthom-forge-phase4.onrender.com"
 ).rstrip("/")
-    "")
+
+backend_summary = {}
+backend_cases = []
+backend_connected = False
+cases_connected = False
+backend_summary_error = None
+backend_cases_error = None
+
+# Fetch backend summary
 try:
-    response = requests.get(f"{BACKEND_URL}/summary", timeout=3)
+    response = requests.get(
+        f"{BACKEND_URL}/summary",
+        timeout=30
+    )
     response.raise_for_status()
     backend_summary = response.json()
     backend_connected = True
-except requests.RequestException:
-    backend_summary = {}
-    backend_connected = False
-    # FETCH INVESTIGATION CASES FROM BACKEND
+
+except (requests.RequestException, ValueError) as exc:
+    backend_summary_error = str(exc)
+
+# Fetch ERP investigation cases
 try:
     cases_response = requests.get(
         f"{BACKEND_URL}/cases",
         params={"limit": 500},
-        timeout=5
+        timeout=30
     )
     cases_response.raise_for_status()
-    backend_cases = cases_response.json().get("cases", [])
+
+    cases_data = cases_response.json()
+
+    if isinstance(cases_data, list):
+        backend_cases = cases_data
+    else:
+        backend_cases = cases_data.get("cases", [])
+
     cases_connected = True
 
-except requests.RequestException:
+except (requests.RequestException, ValueError) as exc:
     backend_cases = []
     cases_connected = False
+    backend_cases_error = str(exc)
+
     
 
 
