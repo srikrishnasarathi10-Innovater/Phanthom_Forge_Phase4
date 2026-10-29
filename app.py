@@ -500,7 +500,7 @@ import requests
 
 BACKEND_URL = os.getenv(
     "BACKEND_URL",
-    "http://127.0.0.1:8000"
+    requests.get(f"{BACKEND_URL}/cases")
 ).rstrip("/")
 try:
     response = requests.get(f"{BACKEND_URL}/summary", timeout=3)
