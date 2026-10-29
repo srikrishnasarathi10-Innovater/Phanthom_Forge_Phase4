@@ -1,0 +1,6 @@
+machine_id,source_file,mapping_type
+MACH-01,anomaly-free/anomaly-free.csv,SIMULATED
+MACH-02,other/11.csv,SIMULATED
+MACH-03,other/12.csv,SIMULATED
+MACH-04,other/13.csv,SIMULATED
+MACH-05,other/14.csv,SIMULATED
