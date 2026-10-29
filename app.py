@@ -1,10 +1,12 @@
+
 import os
+from datetime import datetime, timedelta
+
+import numpy as np
+import pandas as pd
 import requests
 import streamlit as st
-import pandas as pd
-import numpy as np
 from sklearn.ensemble import IsolationForest
-from datetime import datetime, timedelta
 
 # =========================================================
 # PAGE CONFIGURATION
@@ -13,92 +15,41 @@ st.set_page_config(
     page_title="Phantom Detection AI",
     page_icon="🛡️",
     layout="wide",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="expanded",
 )
+
+# =========================================================
+# BACKEND CONFIGURATION
+# Set BACKEND_URL in Render for cloud deployment.
+# The default is the existing backend URL from your code.
+# =========================================================
+BACKEND_URL = os.getenv(
+    "BACKEND_URL",
+    "https://phanthom-forge-phase4.onrender.com",
+).rstrip("/")
+
 
 # =========================================================
 # DESIGN SYSTEM — WHITE / PURPLE / PINK
 # =========================================================
-st.markdown("""
+st.markdown(
+    """
 <style>
-/* Main page */
-/* Main page header: keep the project title at the very top of the content */
-.main-page-header {
-    display: block;
-    box-sizing: border-box;
-    width: 100%;
-    margin: 0 0 24px 0;
-    padding: 12px 0 0 0;
-    overflow: visible;
-    overflow-wrap: anywhere;
-}
-.main-page-title {
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 12px;
-    color: #171525;
-    font-size: clamp(1.55rem, 2.0vw, 2.1rem);
-    font-weight: 850;
-    line-height: 1.4;
-    letter-spacing: -0.5px;
-    padding: 2px 0 5px;
-    overflow: visible;
-    overflow-wrap: anywhere;
-}
-.main-title-shield {
-    flex: 0 0 auto;
-    font-size: 2rem;
-    line-height: 1.35;
-    display: inline-block;
-    padding: 2px 0;
-}
-.main-title-accent {
-    color: #8051E8;
-}
-.main-page-subtitle {
-    margin: 5px 0 0 58px;
-    color: #756D84;
-    font-size: clamp(1rem, 1.5vw, 1.2rem);
-    line-height: 1.45;
-}
-.main-page-tagline {
-    margin: 18px 0 0 0;
-    color: #756D84;
-    font-size: 1rem;
-    line-height: 1.6;
-}
-@media (max-width: 640px) {
-    .main-page-title { gap: 8px; letter-spacing: -0.3px; font-size: 1.55rem; line-height: 1.35; }
-    .main-title-shield { font-size: 1.65rem; }
-    .main-page-subtitle { margin-left: 0; }
-}
-
-.stApp {
-    background: #FFFFFF;
-    color: #171525;
-}
-
-[data-testid="stAppViewContainer"] {
-    background: #FFFFFF;
-}
-
-[data-testid="stHeader"] {
-    background: #FFFFFF;
-}
-
+.stApp,
+[data-testid="stAppViewContainer"],
+[data-testid="stHeader"],
 [data-testid="stMain"] {
     background: #FFFFFF;
+    color: #171525;
 }
 
 .block-container {
     max-width: 1500px;
-    padding: 2.5rem 2.5rem 3rem 2.5rem;
+    padding: 2.5rem 2.5rem 3rem;
     margin: 0 auto;
     overflow: visible;
 }
 
-/* Prevent long content from forcing horizontal scrolling */
 [data-testid="stMainBlockContainer"] {
     min-width: 0;
 }
@@ -126,11 +77,57 @@ h3 {
     font-weight: 700 !important;
 }
 
+/* Main page header */
+.main-page-header {
+    display: block;
+    box-sizing: border-box;
+    width: 100%;
+    margin: 0 0 24px;
+    padding: 12px 0 0;
+    overflow-wrap: anywhere;
+}
+
+.main-page-title {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+    color: #171525;
+    font-size: clamp(1.55rem, 2vw, 2.1rem);
+    font-weight: 850;
+    line-height: 1.4;
+    letter-spacing: -0.5px;
+    padding: 2px 0 5px;
+}
+
+.main-title-shield {
+    flex: 0 0 auto;
+    font-size: 2rem;
+}
+
+.main-title-accent {
+    color: #8051E8;
+}
+
+.main-page-subtitle {
+    margin: 5px 0 0 58px;
+    color: #756D84;
+    font-size: clamp(1rem, 1.5vw, 1.2rem);
+    line-height: 1.45;
+}
+
+.main-page-tagline {
+    margin-top: 18px;
+    color: #756D84;
+    font-size: 1rem;
+    line-height: 1.6;
+}
+
 /* Sidebar */
 section[data-testid="stSidebar"] {
     background: #F8F6FF;
     border-right: 1px solid #E5D9FF;
-    min-width: 270px;
+    min-width: 250px;
 }
 
 section[data-testid="stSidebar"] > div {
@@ -145,7 +142,6 @@ section[data-testid="stSidebar"] label {
     color: #201A35 !important;
 }
 
-/* Visible navigation options */
 section[data-testid="stSidebar"] [data-testid="stRadio"] > div {
     gap: 8px;
 }
@@ -164,12 +160,12 @@ section[data-testid="stSidebar"] [data-testid="stRadio"] label:hover {
     border-color: #8B5CF6;
 }
 
-/* Hide radio circles while keeping options clickable */
-section[data-testid="stSidebar"] [data-testid="stRadio"] label > div:first-child {
+section[data-testid="stSidebar"] [data-testid="stRadio"]
+label > div:first-child {
     display: none;
 }
 
-/* Buttons — visible against white */
+/* Buttons */
 .stButton > button,
 .stDownloadButton > button {
     background: #6D3FE8 !important;
@@ -197,7 +193,7 @@ section[data-testid="stSidebar"] [data-testid="stRadio"] label > div:first-child
     box-shadow: 0 0 0 3px rgba(236, 72, 153, 0.18) !important;
 }
 
-/* Text inputs and selectors */
+/* Inputs */
 .stTextInput input,
 .stNumberInput input,
 .stSelectbox [data-baseweb="select"],
@@ -214,7 +210,7 @@ section[data-testid="stSidebar"] [data-testid="stRadio"] label > div:first-child
     font-weight: 600 !important;
 }
 
-/* General cards */
+/* Metric cards */
 .pd-card {
     background: #FFFFFF;
     border: 1px solid #E5D9FF;
@@ -233,10 +229,11 @@ section[data-testid="stSidebar"] [data-testid="stRadio"] label > div:first-child
 }
 
 .pd-card-value {
-    font-size: clamp(1.7rem, 2.6vw, 2.3rem);
+    font-size: clamp(1.5rem, 2.6vw, 2.3rem);
     font-weight: 800;
     color: #171525;
     line-height: 1.2;
+    overflow-wrap: anywhere;
 }
 
 .pd-card-note {
@@ -246,7 +243,7 @@ section[data-testid="stSidebar"] [data-testid="stRadio"] label > div:first-child
     line-height: 1.5;
 }
 
-/* Two score panels */
+/* Score cards */
 .score-card {
     background: #FFFFFF;
     border: 1px solid #E5D9FF;
@@ -275,7 +272,7 @@ section[data-testid="stSidebar"] [data-testid="stRadio"] label > div:first-child
     color: #706780;
     font-size: 0.9rem;
     line-height: 1.6;
-    margin: 10px 0 20px 0;
+    margin: 10px 0 20px;
 }
 
 .score-number {
@@ -323,7 +320,7 @@ section[data-testid="stSidebar"] [data-testid="stRadio"] label > div:first-child
     border-radius: 12px;
     padding: 16px 19px;
     line-height: 1.65;
-    margin: 18px 0 26px 0;
+    margin: 18px 0 26px;
 }
 
 .info-box {
@@ -356,17 +353,15 @@ hr {
     margin: 24px 0 !important;
 }
 
-/* Tables */
 [data-testid="stDataFrame"] {
     border: 1px solid #E5D9FF;
     border-radius: 12px;
     overflow: hidden;
 }
 
-/* Mobile and narrow windows */
 @media (max-width: 900px) {
     .block-container {
-        padding: 1.2rem 1rem 2rem 1rem;
+        padding: 1.2rem 1rem 2rem;
     }
 
     .pd-card {
@@ -376,13 +371,20 @@ hr {
     .score-card {
         padding: 18px;
     }
+
+    .main-page-subtitle {
+        margin-left: 0;
+    }
 }
 </style>
-""", unsafe_allow_html=True)
+""",
+    unsafe_allow_html=True,
+)
 
 
 # =========================================================
-# DEMONSTRATION DATA
+# DEMONSTRATION SENSOR DATA
+# These readings are generated, not live hardware readings.
 # =========================================================
 @st.cache_data
 def create_demo_data():
@@ -392,64 +394,67 @@ def create_demo_data():
         "Pressure Sensor",
         "Temperature Sensor",
         "Voltage Sensor",
-        "Current Sensor"
+        "Current Sensor",
     ]
 
     base_values = {
         "Pressure Sensor": 50.0,
         "Temperature Sensor": 70.0,
         "Voltage Sensor": 220.0,
-        "Current Sensor": 12.0
+        "Current Sensor": 12.0,
     }
 
     noise_values = {
         "Pressure Sensor": 2.0,
         "Temperature Sensor": 2.5,
         "Voltage Sensor": 4.0,
-        "Current Sensor": 0.8
+        "Current Sensor": 0.8,
     }
 
     rows = []
     start = datetime.now() - timedelta(minutes=119)
 
     for sensor in sensor_names:
-        values = (
-            base_values[sensor]
-            + rng.normal(0, noise_values[sensor], 30)
+        noise = noise_values[sensor]
+        values = base_values[sensor] + rng.normal(0, noise, 30)
+
+        anomaly_indices = rng.choice(30, size=3, replace=False)
+        values[anomaly_indices] += (
+            rng.choice([-1, 1], size=3)
+            * noise
+            * rng.uniform(4, 8, size=3)
         )
 
-        # Inject a few artificial unusual readings for demonstration.
-        anomaly_indices = rng.choice(30, size=3, replace=False)
-        values[anomaly_indices] += rng.choice(
-            [-1, 1], size=3
-        ) * noise_values[sensor] * rng.uniform(4, 8, size=3)
-
         for i, value in enumerate(values):
-            rows.append({
-                "Timestamp": start + timedelta(minutes=i * 4),
-                "Sensor": sensor,
-                "Reading": round(float(value), 2),
-                "Demo label": (
-                    "Artificial anomaly"
-                    if i in anomaly_indices
-                    else "Generated reading"
-                )
-            })
+            rows.append(
+                {
+                    "Timestamp": start + timedelta(minutes=i * 4),
+                    "Sensor": sensor,
+                    "Reading": round(float(value), 2),
+                    "Demo label": (
+                        "Artificial anomaly"
+                        if i in anomaly_indices
+                        else "Generated reading"
+                    ),
+                }
+            )
 
-    df = pd.DataFrame(rows).sort_values("Timestamp").reset_index(drop=True)
+    df = (
+        pd.DataFrame(rows)
+        .sort_values("Timestamp")
+        .reset_index(drop=True)
+    )
 
     statistical_scores = []
     model_scores = []
 
-    # Score each sensor against its own historical readings.
     for sensor in sensor_names:
-        sensor_mask = df["Sensor"] == sensor
-        values = df.loc[sensor_mask, "Reading"].to_numpy()
+        mask = df["Sensor"] == sensor
+        values = df.loc[mask, "Reading"].to_numpy()
 
         median = np.median(values)
         mad = np.median(np.abs(values - median))
 
-        # Robust statistical deviation score using MAD.
         if mad < 1e-9:
             robust_z = np.zeros(len(values))
         else:
@@ -457,11 +462,10 @@ def create_demo_data():
 
         stat_scores = np.clip((robust_z / 6.0) * 100, 0, 100)
 
-        # Isolation Forest model score.
         model = IsolationForest(
             n_estimators=150,
             contamination=0.10,
-            random_state=42
+            random_state=42,
         )
         model.fit(values.reshape(-1, 1))
 
@@ -469,8 +473,11 @@ def create_demo_data():
             values.reshape(-1, 1)
         )
 
-        # Convert the model's relative anomaly ranking to a 0–100 score.
-        ranks = pd.Series(raw_anomaly).rank(pct=True).to_numpy()
+        ranks = (
+            pd.Series(raw_anomaly)
+            .rank(pct=True)
+            .to_numpy()
+        )
         ml_scores = np.clip(ranks * 100, 0, 100)
 
         statistical_scores.extend(stat_scores.tolist())
@@ -491,68 +498,68 @@ def create_demo_data():
         )
     )
 
-    return df.sort_values("Timestamp", ascending=False).reset_index(drop=True)
+    return df.sort_values(
+        "Timestamp", ascending=False
+    ).reset_index(drop=True)
 
 
 df = create_demo_data()
 
-# =========================================================
-# BACKEND API CONNECTION
-# =========================================================
 
-BACKEND_URL = os.getenv(
-    "BACKEND_URL",
-    "https://phanthom-forge-phase4.onrender.com"
-).rstrip("/")
+# =========================================================
+# BACKEND API — SUMMARY AND INVESTIGATION CASES
+# =========================================================
+def fetch_backend_json(endpoint, params=None, timeout=10):
+    """Fetch JSON from the configured backend."""
+    try:
+        response = requests.get(
+            f"{BACKEND_URL}/{endpoint.lstrip('/')}",
+            params=params,
+            timeout=timeout,
+        )
+        response.raise_for_status()
+        return response.json(), None
+    except requests.RequestException as exc:
+        return None, str(exc)
+    except ValueError as exc:
+        return None, f"Invalid JSON response: {exc}"
 
-backend_summary = {}
+
+backend_summary, summary_error = fetch_backend_json(
+    "/summary",
+    timeout=10,
+)
+
+backend_connected = (
+    isinstance(backend_summary, dict)
+    and summary_error is None
+)
+
+if not backend_connected:
+    backend_summary = {}
+
+cases_data, cases_error = fetch_backend_json(
+    "/cases",
+    params={"limit": 500},
+    timeout=15,
+)
+
 backend_cases = []
-backend_connected = False
-cases_connected = False
-backend_summary_error = None
-backend_cases_error = None
 
-# Fetch backend summary
-try:
-    response = requests.get(
-        f"{BACKEND_URL}/summary",
-        timeout=30
-    )
-    response.raise_for_status()
-    backend_summary = response.json()
-    backend_connected = True
+if isinstance(cases_data, dict):
+    raw_cases = cases_data.get("cases", [])
+    if isinstance(raw_cases, list):
+        backend_cases = raw_cases
 
-except (requests.RequestException, ValueError) as exc:
-    backend_summary_error = str(exc)
-
-# Fetch ERP investigation cases
-try:
-    cases_response = requests.get(
-        f"{BACKEND_URL}/cases",
-        params={"limit": 500},
-        timeout=30
-    )
-    cases_response.raise_for_status()
-
-    cases_data = cases_response.json()
-
-    if isinstance(cases_data, list):
-        backend_cases = cases_data
-    else:
-        backend_cases = cases_data.get("cases", [])
-
-    cases_connected = True
-
-except (requests.RequestException, ValueError) as exc:
-    backend_cases = []
-    cases_connected = False
-    backend_cases_error = str(exc)
-
-    
+cases_connected = (
+    cases_error is None
+    and isinstance(cases_data, dict)
+    and isinstance(cases_data.get("cases", []), list)
+)
 
 
 # =========================================================
-# SCORE HELPERS
+# HELPER FUNCTIONS
 # =========================================================
 def score_class(score):
     if score >= 60:
@@ -589,7 +596,7 @@ def metric_card(label, value, note):
             <div class="pd-card-note">{note}</div>
         </div>
         """,
-        unsafe_allow_html=True
+        unsafe_allow_html=True,
     )
 
 
@@ -597,16 +604,32 @@ def render_score_guide():
     st.markdown("### Score interpretation")
     st.markdown(
         '<span class="score-badge low">● 0–29.9 · Low</span>',
-        unsafe_allow_html=True
+        unsafe_allow_html=True,
     )
     st.markdown(
         '<span class="score-badge medium">● 30–59.9 · Medium</span>',
-        unsafe_allow_html=True
+        unsafe_allow_html=True,
     )
     st.markdown(
         '<span class="score-badge high">● 60–100 · High</span>',
-        unsafe_allow_html=True
+        unsafe_allow_html=True,
     )
+
+
+def flag_is_true(value):
+    """Interpret common boolean representations from API records."""
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, (int, float)):
+        return value == 1
+    return str(value).strip().lower() in {
+        "true", "1", "yes", "y"
+    }
+
+
+def get_priority_counts():
+    counts = backend_summary.get("priority_counts", {})
+    return counts if isinstance(counts, dict) else {}
 
 
 # =========================================================
@@ -625,7 +648,7 @@ with st.sidebar:
             </div>
         </div>
         """,
-        unsafe_allow_html=True
+        unsafe_allow_html=True,
     )
 
     st.divider()
@@ -637,99 +660,128 @@ with st.sidebar:
             "Overview",
             "Sensor Monitoring",
             "Investigation Centre",
-            "ERP Reconciliation"
+            "ERP Reconciliation",
         ],
         label_visibility="collapsed",
-        key="page_navigation"
+        key="page_navigation",
     )
 
     st.divider()
+    st.markdown("### System status")
 
-    st.markdown("### 🟢 System status")
-    st.markdown(
-        """
-        <div class="success-box">
-            <strong>Dashboard running</strong><br>
-            <span style="font-size:13px;">Prototype · Demo data</span>
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
+    if backend_connected and cases_connected:
+        st.markdown(
+            """
+            <div class="success-box">
+                <strong>Backend connected</strong><br>
+                <span style="font-size:13px;">
+                    API summary and cases available
+                </span>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+    elif backend_connected or cases_connected:
+        st.warning("Backend partially available")
+    else:
+        st.error("Backend unavailable")
 
-    st.markdown("<br>", unsafe_allow_html=True)
-    st.markdown("### Data source")
-    st.caption("Generated demonstration readings")
-
+    st.caption("Sensor readings: generated demonstration data")
     st.divider()
     render_score_guide()
 
 
 # =========================================================
-# PAGE HEADER — TITLE FIRST, THEN SUBTITLE AND DEMO NOTICE
+# PAGE HEADER
 # =========================================================
 st.markdown(
     """
     <div class="main-page-header">
         <div class="main-page-title">
             <span class="main-title-shield">🛡️</span>
-            <span>Phantom Detection <span class="main-title-accent">AI</span></span>
+            <span>Phantom Detection
+                <span class="main-title-accent">AI</span>
+            </span>
         </div>
-        <div class="main-page-subtitle">Enterprise Anomaly Intelligence</div>
+        <div class="main-page-subtitle">
+            Enterprise Anomaly Intelligence
+        </div>
         <div class="main-page-tagline">
             Statistical analysis meets machine-learning anomaly detection.
         </div>
     </div>
+
     <div class="demo-banner">
-        <strong>DEMO MODE</strong> — All sensor readings are generated sample data.
-        The model is a prototype and has not been validated against labelled
-        real-world sensor data. No live sensors or ERP integration are connected.
+        <strong>DEMO MODE</strong> — Sensor readings on this dashboard
+        are generated sample data. Isolation Forest is fitted to these
+        demonstration readings at runtime. This is not the saved sensor
+        model's evaluation. ERP investigation records are also synthetic
+        demonstration data, and no verified production ERP integration
+        is claimed.
     </div>
     """,
-    unsafe_allow_html=True
+    unsafe_allow_html=True,
 )
 
 
 # =========================================================
-# OVERVIEW PAGE
+# PAGE 1 — OVERVIEW
 # =========================================================
 if page == "Overview":
 
     st.markdown("## System Overview")
     st.markdown(
         '<div class="section-caption">'
-        'A compact operational summary and two independent anomaly scores.'
+        'Operational summary and two independent anomaly scores.'
         '</div>',
-        unsafe_allow_html=True
+        unsafe_allow_html=True,
     )
 
     total_readings = len(df)
     high_count = int((df["Review Score"] >= 60).sum())
     medium_count = int(
-        ((df["Review Score"] >= 30) & (df["Review Score"] < 60)).sum()
+        (
+            (df["Review Score"] >= 30)
+            & (df["Review Score"] < 60)
+        ).sum()
     )
     low_count = int((df["Review Score"] < 30).sum())
 
     c1, c2, c3, c4 = st.columns(4, gap="medium")
 
     with c1:
-        metric_card("Readings analysed", total_readings, "Across 4 demo sensors")
+        metric_card(
+            "Readings analysed",
+            total_readings,
+            "Across 4 demonstration sensors",
+        )
     with c2:
-        metric_card("High-priority readings", high_count, "Score ≥ 60")
+        metric_card(
+            "High-priority readings",
+            high_count,
+            "Review score ≥ 60",
+        )
     with c3:
-        metric_card("Medium-priority readings", medium_count, "Score 30–59.9")
+        metric_card(
+            "Medium-priority readings",
+            medium_count,
+            "Review score 30–59.9",
+        )
     with c4:
-        metric_card("Low-priority readings", low_count, "Score below 30")
+        metric_card(
+            "Low-priority readings",
+            low_count,
+            "Review score below 30",
+        )
 
-    st.markdown("<br>", unsafe_allow_html=True)
     st.markdown("## Latest Reading — Two Independent Scores")
 
-    latest = df.iloc[0]
-
     sensor_options = sorted(df["Sensor"].unique().tolist())
+
     selected_sensor = st.selectbox(
         "Select a sensor to inspect",
         sensor_options,
-        index=sensor_options.index(latest["Sensor"])
+        index=sensor_options.index(df.iloc[0]["Sensor"]),
     )
 
     sensor_data = df[df["Sensor"] == selected_sensor].copy()
@@ -742,11 +794,11 @@ if page == "Overview":
             score_card_html(
                 "Statistical Anomaly Score",
                 "METHOD 01 · ROBUST STATISTICS",
-                "Measures how far this reading deviates from its sensor's "
-                "median using the Median Absolute Deviation (MAD).",
-                float(reading["Statistical Score"])
+                "Measures how far this reading deviates from its "
+                "sensor's median using Median Absolute Deviation (MAD).",
+                float(reading["Statistical Score"]),
             ),
-            unsafe_allow_html=True
+            unsafe_allow_html=True,
         )
 
     with col2:
@@ -755,93 +807,107 @@ if page == "Overview":
                 "ML Model Anomaly Score",
                 "METHOD 02 · ISOLATION FOREST",
                 "Ranks the reading's relative unusualness using an "
-                "Isolation Forest model trained on demonstration readings.",
+                "Isolation Forest fitted to demonstration readings.",
                 float(reading["ML Model Score"]),
-                model=True
+                model=True,
             ),
-            unsafe_allow_html=True
+            unsafe_allow_html=True,
         )
+
     st.markdown("## Backend Investigation Summary")
 
     if backend_connected:
+        counts = get_priority_counts()
         b1, b2, b3 = st.columns(3, gap="medium")
 
         with b1:
             metric_card(
                 "Total Orders",
                 backend_summary.get("total_orders", 0),
-                "From backend API"
+                "From backend API",
             )
-
         with b2:
             metric_card(
                 "ERP Discrepancies",
                 backend_summary.get("erp_discrepancy_cases", 0),
-                "Orders requiring investigation"
+                "Orders requiring investigation",
             )
-
         with b3:
             metric_card(
                 "High-Priority Cases",
-                backend_summary.get("priority_counts", {}).get("HIGH", 0),
-                "Human review required"
+                counts.get("HIGH", 0),
+                "Prioritised for human review",
             )
-   
-else:
-    st.warning(
-        "Backend API is unavailable. Check the Render backend URL."
-    )
+    else:
+        st.warning(
+            "The backend summary is unavailable. "
+            "Check the backend URL and server status."
+        )
+        with st.expander("Backend connection details"):
+            st.code(BACKEND_URL)
+            st.caption(summary_error or "No response from backend.")
 
-    if backend_summary_error:
-        st.caption(f"Connection details: {backend_summary_error}")
-
-
-    st.markdown("<br>", unsafe_allow_html=True)
     st.markdown("## Reading Details")
 
     d1, d2, d3 = st.columns(3)
 
     with d1:
-        metric_card("Sensor", selected_sensor, "Selected sensor")
+        metric_card(
+            "Sensor",
+            selected_sensor,
+            "Selected demonstration sensor",
+        )
+
     with d2:
-        metric_card("Latest reading", f'{reading["Reading"]:.2f}', "Sensor units are illustrative")
+        metric_card(
+            "Latest reading",
+            f'{reading["Reading"]:.2f}',
+            "Illustrative sensor units",
+        )
+
     with d3:
-        level_class, level_name = score_class(float(reading["Review Score"]))
+        level_class, level_name = score_class(
+            float(reading["Review Score"])
+        )
         st.markdown(
             f"""
             <div class="pd-card">
                 <div class="pd-card-label">Review priority</div>
-                <div class="pd-card-value {level_class}">{level_name}</div>
+                <div class="pd-card-value {level_class}">
+                    {level_name}
+                </div>
                 <div class="pd-card-note">
-                    Based on the higher of the two scores. This is a review
-                    priority, not a confirmed equipment fault.
+                    Based on the higher of the two scores. This is a
+                    review priority, not a confirmed equipment fault.
                 </div>
             </div>
             """,
-            unsafe_allow_html=True
+            unsafe_allow_html=True,
         )
 
     st.caption(
         "Timestamp: "
-        + pd.Timestamp(reading["Timestamp"]).strftime("%d %b %Y, %I:%M:%S %p")
+        + pd.Timestamp(reading["Timestamp"]).strftime(
+            "%d %b %Y, %I:%M:%S %p"
+        )
     )
 
     st.markdown(
         """
         <div class="info-box">
-            <strong>How to interpret the two scores</strong><br>
-            Statistical score: robust deviation from the sensor's historical
-            median. ML score: relative anomaly ranking from Isolation Forest.
-            These are separate methods and may disagree. Investigate the
-            underlying readings before deciding whether a fault exists.
+            <strong>How to interpret the scores</strong><br>
+            Statistical score: robust deviation from the sensor's median.
+            ML score: relative anomaly ranking from Isolation Forest.
+            These methods may disagree. Investigate the underlying readings
+            before deciding whether a fault exists.
         </div>
         """,
-        unsafe_allow_html=True
+        unsafe_allow_html=True,
     )
 
 
 # =========================================================
-# SENSOR MONITORING PAGE
+# PAGE 2 — SENSOR MONITORING
 # =========================================================
 elif page == "Sensor Monitoring":
 
@@ -850,17 +916,17 @@ elif page == "Sensor Monitoring":
         '<div class="section-caption">'
         'Inspect generated readings and compare the two scoring methods.'
         '</div>',
-        unsafe_allow_html=True
+        unsafe_allow_html=True,
     )
 
     sensor_filter = st.selectbox(
         "Filter by sensor",
-        ["All sensors"] + sorted(df["Sensor"].unique().tolist())
+        ["All sensors"] + sorted(df["Sensor"].unique().tolist()),
     )
 
     status_filter = st.selectbox(
         "Filter by review priority",
-        ["All priorities", "High", "Medium", "Low"]
+        ["All priorities", "High", "Medium", "Low"],
     )
 
     filtered = df.copy()
@@ -869,7 +935,9 @@ elif page == "Sensor Monitoring":
         filtered = filtered[filtered["Sensor"] == sensor_filter]
 
     if status_filter != "All priorities":
-        filtered = filtered[filtered["Review Status"] == status_filter]
+        filtered = filtered[
+            filtered["Review Status"] == status_filter
+        ]
 
     display_df = filtered[
         [
@@ -878,7 +946,9 @@ elif page == "Sensor Monitoring":
             "Reading",
             "Statistical Score",
             "ML Model Score",
-            "Review Status"
+            "Review Score",
+            "Review Status",
+            "Demo label",
         ]
     ].copy()
 
@@ -891,7 +961,7 @@ elif page == "Sensor Monitoring":
     st.dataframe(
         display_df,
         use_container_width=True,
-        hide_index=True
+        hide_index=True,
     )
 
     csv_data = filtered.to_csv(index=False).encode("utf-8")
@@ -901,52 +971,58 @@ elif page == "Sensor Monitoring":
         data=csv_data,
         file_name="phantom_detection_demo_readings.csv",
         mime="text/csv",
-        use_container_width=False
     )
 
 
 # =========================================================
-# INVESTIGATION CENTRE PAGE
+# PAGE 3 — INVESTIGATION CENTRE
 # =========================================================
 elif page == "Investigation Centre":
 
     st.markdown("## Investigation Centre")
     st.markdown(
         '<div class="section-caption">'
-        'Review readings that may deserve further attention. A high score alone '
-        'does not establish a real sensor fault.'
+        'Review readings that may deserve further attention. A high score '
+        'alone does not establish a real sensor fault.'
         '</div>',
-        unsafe_allow_html=True
+        unsafe_allow_html=True,
     )
 
     candidates = df[df["Review Score"] >= 30].copy()
+    candidates = candidates.sort_values(
+        "Review Score", ascending=False
+    )
 
     if candidates.empty:
-        st.success("No readings currently meet the review threshold.")
-    else:
-        candidates = candidates.sort_values(
-            "Review Score", ascending=False
+        st.success(
+            "No readings currently meet the review threshold."
         )
+    else:
+        display_candidates = candidates[
+            [
+                "Timestamp",
+                "Sensor",
+                "Reading",
+                "Statistical Score",
+                "ML Model Score",
+                "Review Score",
+                "Review Status",
+                "Demo label",
+            ]
+        ].copy()
 
-        candidates["Timestamp"] = candidates["Timestamp"].dt.strftime(
-            "%d %b %Y %I:%M %p"
+        display_candidates["Timestamp"] = (
+            display_candidates["Timestamp"].dt.strftime(
+                "%d %b %Y %I:%M %p"
+            )
         )
 
         st.markdown("### Readings requiring review")
 
         st.dataframe(
-            candidates[
-                [
-                    "Timestamp",
-                    "Sensor",
-                    "Reading",
-                    "Statistical Score",
-                    "ML Model Score",
-                    "Review Status"
-                ]
-            ],
+            display_candidates,
             use_container_width=True,
-            hide_index=True
+            hide_index=True,
         )
 
         st.markdown("### Investigate a reading")
@@ -960,7 +1036,7 @@ elif page == "Investigation Centre":
                 f'{df.loc[idx, "Sensor"]} · '
                 f'{df.loc[idx, "Timestamp"].strftime("%d %b %I:%M %p")} · '
                 f'Score {df.loc[idx, "Review Score"]:.1f}'
-            )
+            ),
         )
 
         chosen = df.loc[chosen_index]
@@ -971,22 +1047,34 @@ elif page == "Investigation Centre":
             metric_card(
                 "Statistical score",
                 f'{chosen["Statistical Score"]:.1f}/100',
-                "Robust deviation method"
+                "Robust deviation method",
             )
 
         with b:
             metric_card(
                 "ML model score",
                 f'{chosen["ML Model Score"]:.1f}/100',
-                "Isolation Forest ranking"
+                "Isolation Forest ranking",
             )
 
         st.markdown("### Investigation checklist")
 
-        st.checkbox("Compare the reading with recent sensor history")
-        st.checkbox("Check timestamp gaps and repeated readings")
-        st.checkbox("Review maintenance and equipment records")
-        st.checkbox("Compare against independent ERP evidence")
+        st.checkbox(
+            "Compare the reading with recent sensor history",
+            key="check_history",
+        )
+        st.checkbox(
+            "Check timestamp gaps and repeated readings",
+            key="check_timestamps",
+        )
+        st.checkbox(
+            "Review maintenance and equipment records",
+            key="check_maintenance",
+        )
+        st.checkbox(
+            "Compare against independent ERP evidence",
+            key="check_erp",
+        )
 
         st.markdown(
             """
@@ -997,14 +1085,12 @@ elif page == "Investigation Centre":
                 maintenance event, or another cause.
             </div>
             """,
-            unsafe_allow_html=True
+            unsafe_allow_html=True,
         )
 
 
 # =========================================================
-
-# =========================================================
-# ERP RECONCILIATION PAGE
+# PAGE 4 — ERP RECONCILIATION
 # =========================================================
 elif page == "ERP Reconciliation":
 
@@ -1013,7 +1099,7 @@ elif page == "ERP Reconciliation":
         '<div class="section-caption">'
         'Review ERP discrepancy flags alongside sensor anomaly indicators.'
         '</div>',
-        unsafe_allow_html=True
+        unsafe_allow_html=True,
     )
 
     if cases_connected:
@@ -1023,19 +1109,20 @@ elif page == "ERP Reconciliation":
                 <strong>Backend connected</strong><br>
                 Investigation cases are loaded from the FastAPI backend.
                 ERP records and sensor-to-machine mappings are synthetic
-                demonstration data, not a verified production ERP integration.
+                demonstration data, not a verified production ERP
+                integration.
             </div>
             """,
-            unsafe_allow_html=True
+            unsafe_allow_html=True,
         )
-    
-else:
-    st.error(
-        "Could not load investigation cases from the Render backend."
-    )
-
-    if backend_cases_error:
-        st.caption(f"Connection details: {backend_cases_error}")
+    else:
+        st.error(
+            "Could not load investigation cases. "
+            "Check the FastAPI backend connection."
+        )
+        with st.expander("Connection details"):
+            st.code(BACKEND_URL)
+            st.caption(cases_error or "No valid cases response received.")
 
     case_df = pd.DataFrame(backend_cases)
 
@@ -1044,30 +1131,53 @@ else:
         st.markdown("### Reconciliation summary")
 
         e1, e2, e3 = st.columns(3)
+        counts = get_priority_counts()
 
         with e1:
             metric_card(
                 "Demo orders reviewed",
-                str(backend_summary.get("total_orders", len(case_df))),
-                "Synthetic investigation cases"
+                backend_summary.get("total_orders", len(case_df)),
+                "Synthetic investigation cases",
             )
 
         with e2:
+            discrepancy_count = backend_summary.get(
+                "erp_discrepancy_cases",
+                (
+                    int(
+                        case_df["erp_discrepancy_flag"].apply(
+                            flag_is_true
+                        ).sum()
+                    )
+                    if "erp_discrepancy_flag" in case_df.columns
+                    else 0
+                ),
+            )
             metric_card(
                 "ERP discrepancy flags",
-                str(backend_summary.get("erp_discrepancy_cases", 0)),
-                "Requires independent verification"
+                discrepancy_count,
+                "Requires independent verification",
             )
 
         with e3:
+            high_priority_count = counts.get(
+                "HIGH",
+                (
+                    int(
+                        (
+                            case_df["investigation_priority"]
+                            .astype(str)
+                            .str.upper() == "HIGH"
+                        ).sum()
+                    )
+                    if "investigation_priority" in case_df.columns
+                    else 0
+                ),
+            )
             metric_card(
                 "High-priority cases",
-                str(
-                    backend_summary.get(
-                        "priority_counts", {}
-                    ).get("HIGH", 0)
-                ),
-                "Prioritised for human review"
+                high_priority_count,
+                "Prioritised for human review",
             )
 
         st.markdown("### Filter investigation cases")
@@ -1077,7 +1187,7 @@ else:
         with f1:
             selected_priority = st.selectbox(
                 "Investigation priority",
-                ["All", "HIGH", "MEDIUM", "LOW"]
+                ["All", "HIGH", "MEDIUM", "LOW"],
             )
 
         with f2:
@@ -1087,20 +1197,29 @@ else:
 
         filtered_df = case_df.copy()
 
-        if selected_priority != "All":
+        if (
+            selected_priority != "All"
+            and "investigation_priority" in filtered_df.columns
+        ):
             filtered_df = filtered_df[
                 filtered_df["investigation_priority"]
                 .astype(str)
                 .str.upper() == selected_priority
             ]
 
-        if discrepancy_only and "erp_discrepancy_flag" in filtered_df.columns:
-            filtered_df = filtered_df[
-                filtered_df["erp_discrepancy_flag"]
-                .astype(str)
-                .str.lower()
-                .isin(["true", "1"])
-            ]
+        if discrepancy_only:
+            if "erp_discrepancy_flag" in filtered_df.columns:
+                filtered_df = filtered_df[
+                    filtered_df["erp_discrepancy_flag"].apply(
+                        flag_is_true
+                    )
+                ]
+            else:
+                filtered_df = filtered_df.iloc[0:0]
+                st.warning(
+                    "The backend response does not contain an "
+                    "ERP discrepancy flag column."
+                )
 
         st.markdown("### Investigation case register")
 
@@ -1121,42 +1240,58 @@ else:
         ]
 
         visible_columns = [
-            col for col in preferred_columns
-            if col in filtered_df.columns
+            column
+            for column in preferred_columns
+            if column in filtered_df.columns
         ]
 
+        if not visible_columns:
+            visible_columns = filtered_df.columns.tolist()
+
         st.caption(
-            f"Showing {len(filtered_df)} of {len(case_df)} investigation cases."
+            f"Showing {len(filtered_df)} of {len(case_df)} "
+            "investigation cases."
         )
 
         st.dataframe(
             filtered_df[visible_columns],
             use_container_width=True,
-            hide_index=True
+            hide_index=True,
+        )
+
+        csv_export = filtered_df.to_csv(index=False).encode("utf-8")
+
+        st.download_button(
+            "Download filtered investigation cases",
+            data=csv_export,
+            file_name="phantom_erp_investigation_cases.csv",
+            mime="text/csv",
         )
 
         st.markdown("### Evidence and interpretation")
 
         st.info(
-            "An ERP discrepancy flag identifies a record that needs checking. "
-            "A sensor anomaly is a separate warning signal. The mapping between "
-            "sensor machines and ERP cases is simulated, so neither signal "
-            "alone proves fraud or confirms a real-world relationship."
+            "An ERP discrepancy flag identifies a record that needs "
+            "checking. A sensor anomaly is a separate warning signal. "
+            "The mapping between sensor machines and ERP cases is "
+            "simulated, so neither signal alone proves fraud or confirms "
+            "a real-world relationship."
         )
 
-        st.metric(
-            "Confirmed fraud cases",
-            int(backend_summary.get("fraud_confirmed_cases", 0))
+        fraud_count = backend_summary.get(
+            "fraud_confirmed_cases", 0
         )
+        st.metric("Confirmed fraud cases", fraud_count)
 
         st.caption(
-            "Status: Human review required. No fraud is confirmed by this prototype."
+            "Status: Human review required. "
+            "This prototype does not independently confirm fraud."
         )
 
     else:
         st.warning(
-            "No investigation cases are available. "
-            "Check the backend and its investigation_cases.csv file."
+            "No investigation cases are available. Check the backend "
+            "and its investigation case data."
         )
 
 
@@ -1171,9 +1306,9 @@ st.markdown(
     <div style="text-align:center;color:#81778F;font-size:12px;line-height:1.8;">
         <strong style="color:#6D3FE8;">PHANTOM DETECTION AI</strong><br>
         Enterprise Anomaly Intelligence · Demonstration Prototype<br>
-        Statistical and ML scores are decision-support signals, not proof of fraud
-        or equipment failure.
+        Statistical and ML scores are decision-support signals,
+        not proof of fraud or equipment failure.
     </div>
     """,
-    unsafe_allow_html=True
+    unsafe_allow_html=True,
 )
